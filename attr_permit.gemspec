@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["dustin@zive.me"]
   spec.summary       = %q{Simple parametable object creator with lazy loading options.}
   spec.description   = %q{Simple parametable object creator with lazy loading options. Objects can be hashable and optionally convert all values to strings.}
-  spec.homepage      = "https:``//github.com/zeisler/attr_permit"
+  spec.homepage      = "https://github.com/zeisler/attr_permit"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
@@ -19,7 +19,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_runtime_dependency "virtus", '~> 1.0'
-  spec.add_runtime_dependency "activesupport", "~>4.0"
+  spec.add_runtime_dependency "activesupport", ">=4.0"
 
   spec.add_development_dependency "bundler", "~> 1.6"
   spec.add_development_dependency "rake", "~> 10.3"
