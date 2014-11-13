@@ -95,6 +95,14 @@ RSpec.describe AttrPermit, unit: true do
 
   end
 
+  describe "is_equivalent?" do
+    it "will convert all values to strings before checking ==" do
+      obj1 = TestStruct.new(foo: "1", bar: "2")
+      obj2 = TestStruct.new(foo: 1, bar: 2)
+      expect(obj1.is_equivalent?(obj2)).to eq true
+    end
+  end
+
   describe 'sub classing' do
 
     before do
@@ -189,6 +197,70 @@ RSpec.describe AttrPermit, unit: true do
     it 'will call block on to_hash' do
       lazy = Lazy.new(name: -> { raise('Name was called') })
       expect { lazy.to_hash }.to raise_error('Name was called')
+    end
+
+  end
+
+  describe 'map_attribute' do
+
+    it 'will return value from mapped attribute' do
+      class MapAttributeOne < AttrPermit
+        attr_permit :attr
+        map_attribute :my_attr, :attr
+      end
+
+      expect(MapAttributeOne.new(attr: 'attr').my_attr).to eq 'attr'
+    end
+
+    it 'will call proc from map' do
+      class MapAttributeTwo < AttrPermit
+        map_attribute :my_attr, -> { source.item }
+      end
+
+      expect(MapAttributeTwo.new(OpenStruct.new(item: 'My Item')).my_attr).to eq 'My Item'
+    end
+
+  end
+
+  describe 'map_attributes' do
+
+    before do
+      class MapAttributeOne < AttrPermit
+        attr_permit :attr, :attr2
+        map_attributes :my_attr => :attr, :my_attr2 => :attr2
+      end
+    end
+
+    it 'will return value from mapped attribute' do
+      expect(MapAttributeOne.new(attr: 'attr1').my_attr).to eq 'attr1'
+      expect(MapAttributeOne.new(attr2: 'attr2').my_attr2).to eq 'attr2'
+    end
+
+    it 'map_hash' do
+      expect(MapAttributeOne.new(attr2: 'attr2', attr: 'attr1').map_hash).to eq({:my_attr => "attr1", :my_attr2 => "attr2"})
+    end
+
+    it 'permit_hash' do
+      expect(MapAttributeOne.new(attr2: 'attr2', attr: 'attr1').permit_hash).to eq({:attr => "attr1", :attr2 => "attr2"})
+    end
+
+    it 'to_hash' do
+      expect(MapAttributeOne.new(attr2: 'attr2', attr: 'attr1').to_hash).to eq({:attr => "attr1", :attr2 => "attr2", :my_attr => "attr1", :my_attr2 => "attr2"})
+    end
+
+    it 'non_nil_values' do
+      expect(MapAttributeOne.new(attr2: 'attr2').non_nil_values(:map_hash)).to eq({:my_attr2 => "attr2"})
+      expect(MapAttributeOne.new(attr2: 'attr2').non_nil_values(:permit_hash)).to eq({:attr2 => "attr2"})
+      expect(MapAttributeOne.new(attr2: 'attr2').non_nil_values).to eq({:attr2 => "attr2", :my_attr2 => "attr2"})
+    end
+
+    it 'will call proc from map' do
+      class MapAttributeTwo < AttrPermit
+        map_attributes :my_attr => -> { source.item }
+      end
+
+      expect(MapAttributeTwo.new(OpenStruct.new(item: 'My Item')).my_attr).to eq 'My Item'
+      expect(MapAttributeTwo.new(OpenStruct.new(item: 'My Item')).to_hash).to eq({:my_attr => "My Item"})
     end
 
   end

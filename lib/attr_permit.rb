@@ -1,4 +1,3 @@
-require 'attr_permit/version'
 require 'active_support/core_ext/big_decimal'
 
 class AttrPermit
@@ -9,8 +8,12 @@ class AttrPermit
       @permissible_methods ||= []
     end
 
+    def mapped_methods
+      @mapped_methods ||= []
+    end
+
     def attr_permit(*permissible_methods)
-      self.permissible_methods.concat [*permissible_methods, *get_super_attr]
+      self.permissible_methods.concat [*permissible_methods, *get_super_permissible_methods]
       self.permissible_methods.each do |meth|
 
         send(:define_method, meth) do
@@ -21,10 +24,33 @@ class AttrPermit
       end
     end
 
+    def map_attributes(map_hash)
+      map_hash.each do |to, from|
+        map_attribute to, from
+      end
+    end
+
+    def map_attribute(to, from)
+      self.mapped_methods.concat [*to, *get_super_mapped_methods]
+      if from.is_a? Proc
+        send(:define_method, to) do
+          instance_exec(&from)
+        end
+      else
+        send(:define_method, to) do
+          call_method(from)
+        end
+      end
+    end
+
     protected
 
-    def get_super_attr
+    def get_super_permissible_methods
       superclass.permissible_methods unless superclass == AttrPermit
+    end
+
+    def get_super_mapped_methods
+      superclass.mapped_methods unless superclass == AttrPermit
     end
 
   end
@@ -53,31 +79,36 @@ class AttrPermit
 
   protected :call_method
 
+  def map_hash(big_decimal_as_string: false, all_values_as_string: false)
+    hasher([*self.class.mapped_methods], big_decimal_as_string, all_values_as_string)
+  end
+
+  def permit_hash(big_decimal_as_string: false, all_values_as_string: false)
+    hasher([*self.class.permissible_methods], big_decimal_as_string, all_values_as_string)
+  end
+
   def to_hash(big_decimal_as_string: false, all_values_as_string: false)
-    @big_decimal_as_string = big_decimal_as_string
-    @all_values_as_string = all_values_as_string
-    hash = {}
-    self.class.permissible_methods.each do |var|
-      value = send(var)
-      value = to_hash_object(value)
-      value = big_decimal_as_string_convert(value)
-      value = all_values_as_string_convert(value)
-      value = array_to_hash(value)
-      hash[var] = value
-    end
-    hash
+    hasher([*self.class.permissible_methods, *self.class.mapped_methods], big_decimal_as_string, all_values_as_string)
   end
 
   alias_method :to_h, :to_hash
 
-  def non_nil_values
+  def non_nil_values(hash_type=:to_hash)
     hash = {}
-    to_hash.each { |k, v| hash[k] = v unless v.nil? }
+    send(hash_type).each { |k, v| hash[k] = v unless v.nil? }
     hash
   end
 
   def ==(obj)
     self.hash == obj.hash
+  end
+
+  def is_equivalent?(obj)
+    self_hash = self.to_hash
+    obj_hash = obj.to_hash
+    self_hash.each { |k, v| self_hash[k] = v.to_s }
+    obj_hash.each { |k, v| obj_hash[k] = v.to_s }
+    self_hash == obj_hash
   end
 
   def hash
@@ -138,4 +169,38 @@ class AttrPermit
     value
   end
 
+  def hasher(methods, big_decimal_as_string, all_values_as_string)
+    @big_decimal_as_string = big_decimal_as_string
+    @all_values_as_string = all_values_as_string
+    hash = {}
+    methods.each do |var|
+      value = send(var)
+      value = to_hash_object(value)
+      value = big_decimal_as_string_convert(value)
+      value = all_values_as_string_convert(value)
+      value = array_to_hash(value)
+      hash[var] = value
+    end
+    hash
+  end
+
 end
+
+class AttrPermitLazy < AttrPermit
+
+  def self.attr_permit(*permissible_methods)
+    self.permissible_methods.concat [*permissible_methods, *get_super_premissible_methods]
+    self.permissible_methods.each do |meth|
+
+      send(:define_method, meth) do
+        callable = instance_variable_get("@#{meth}")
+        instance_variable_set("@#{meth}", callable.call) if callable.respond_to?(:call)
+        instance_variable_get("@#{meth}")
+      end
+
+      attr_writer meth unless public_instance_methods.include?("#{meth}=")
+    end
+  end
+
+end
+
