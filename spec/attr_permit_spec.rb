@@ -214,10 +214,10 @@ RSpec.describe AttrPermit, unit: true do
 
     it 'will call proc from map' do
       class MapAttributeTwo < AttrPermit
-        map_attribute :my_attr, -> { source.item }
+        map_attribute :my_attr, -> { item.thing }
       end
 
-      expect(MapAttributeTwo.new(OpenStruct.new(item: 'My Item')).my_attr).to eq 'My Item'
+      expect(MapAttributeTwo.new(OpenStruct.new(item: OpenStruct.new(thing: 'My Item'))).my_attr).to eq 'My Item'
     end
 
   end
@@ -256,7 +256,7 @@ RSpec.describe AttrPermit, unit: true do
 
     it 'will call proc from map' do
       class MapAttributeTwo < AttrPermit
-        map_attributes :my_attr => -> { source.item }
+        map_attributes :my_attr => -> { item }
       end
 
       expect(MapAttributeTwo.new(OpenStruct.new(item: 'My Item')).my_attr).to eq 'My Item'

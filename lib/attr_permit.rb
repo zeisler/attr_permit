@@ -34,7 +34,7 @@ class AttrPermit
       self.mapped_methods.concat [*to, *get_super_mapped_methods]
       if from.is_a? Proc
         send(:define_method, to) do
-          instance_exec(&from)
+          source.instance_exec(&from)
         end
       else
         send(:define_method, to) do
